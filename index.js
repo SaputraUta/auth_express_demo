@@ -4,6 +4,7 @@ const port = 3000;
 const User = require("./models/user");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const session = require("express-session");
 
 mongoose
   .connect("mongodb://127.0.0.1/auth_db")
@@ -18,6 +19,14 @@ app.set("view engine", "ejs");
 app.set("views", "views");
 
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  session({
+    secret: "keyboard cat",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 app.get("/", (req, res) => {
   res.send("Homepage");
@@ -34,20 +43,21 @@ app.post("/register", async (req, res) => {
   res.redirect("/");
 });
 
-app.post("/login", async(req,res) => {
-  const {username, password} = req.body;
-  const user = await User.findOne({username});
+app.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
   if (user) {
     const isMatch = await bcrypt.compare(password, user.password);
     if (isMatch) {
-      res.send("Login berhasil")
+      req.session.user_id = user._id;
+      res.redirect("/admin");
     } else {
-      res.send("Password salah");
+      res.redirect("/login");
     }
   } else {
-    res.send ("Username tidak ditemukan");
+    res.redirect("/login");
   }
-})
+});
 
 app.get("/register", (req, res) => {
   res.render("register");
@@ -55,9 +65,12 @@ app.get("/register", (req, res) => {
 
 app.get("/login", (req, res) => {
   res.render("login");
-})
+});
 
 app.get("/admin", (req, res) => {
+  if (!req.session.user_id) {
+    res.redirect("/login");
+  }
   res.send("This page only can be accessed if you are an admin!");
 });
 
