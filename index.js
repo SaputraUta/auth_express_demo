@@ -28,7 +28,14 @@ app.use(
   })
 );
 
-app.get("/", (req, res) => {
+const auth = (req, res, next) => {
+  if (!req.session.user_id) {
+    res.redirect("/login");
+  }
+  next();
+};
+
+app.get("/", auth, (req, res) => {
   res.send("Homepage");
 });
 
@@ -67,12 +74,22 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 
-app.get("/admin", (req, res) => {
+app.post("/logout", (req, res) => {
+  req.session.destroy(()=>{
+    res.redirect("/login");
+  })
+})
+
+app.get("/admin", auth, (req, res) => {
   if (!req.session.user_id) {
     res.redirect("/login");
   }
-  res.send("This page only can be accessed if you are an admin!");
+  res.render("admin");
 });
+
+app.get("/profile/settings", auth, (req, res) => {
+  res.send("profile for " + req.session.user_id);
+})
 
 app.listen(port, () => {
   console.log(`App listening at http://localhost:${port}`);
