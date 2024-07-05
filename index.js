@@ -35,32 +35,24 @@ const auth = (req, res, next) => {
   next();
 };
 
-app.get("/", auth, (req, res) => {
+app.get("/", (req, res) => {
   res.send("Homepage");
 });
 
 app.post("/register", async (req, res) => {
   const { username, password } = req.body;
-  const hashPassword = await bcrypt.hashSync(password, 10);
-  const user = new User({
-    username: username,
-    password: hashPassword,
-  });
+  const user = new User({ username, password });
   await user.save();
+  req.session.user_ud = user._id;
   res.redirect("/");
 });
 
 app.post("/login", async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username });
+  const user = await User.findByCredentials(username, password);
   if (user) {
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (isMatch) {
-      req.session.user_id = user._id;
-      res.redirect("/admin");
-    } else {
-      res.redirect("/login");
-    }
+    req.session.user_id = user._id;
+    res.redirect("/admin");
   } else {
     res.redirect("/login");
   }
@@ -75,10 +67,10 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  req.session.destroy(()=>{
+  req.session.destroy(() => {
     res.redirect("/login");
-  })
-})
+  });
+});
 
 app.get("/admin", auth, (req, res) => {
   if (!req.session.user_id) {
@@ -89,7 +81,7 @@ app.get("/admin", auth, (req, res) => {
 
 app.get("/profile/settings", auth, (req, res) => {
   res.send("profile for " + req.session.user_id);
-})
+});
 
 app.listen(port, () => {
   console.log(`App listening at http://localhost:${port}`);
